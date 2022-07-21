@@ -14,7 +14,7 @@ namespace KBB.Corrigeer
     {
         private const string OrchestrateCorrigeerActions = "OrchestrateCorrigeerActions";
         private const string StartCorrectionOrchestrator = "StartCorrectionOrchestrator";
-
+        private const string SubOrchestratorStartSynapsePipeline = "SubOrchestratorStartSynapsePipeline";
         private const string ActionCheckCsvIntegrity = "ActionCheckCsvIntegrity";
         private const string ActionValidateSqlConstraints = "ActionValidateSqlConstraints";
         private const string ActionPerformSqlCorrection = "ActionPerformSqlCorrection";
@@ -71,7 +71,7 @@ namespace KBB.Corrigeer
             await context.WaitForExternalEvent(EventApproveCorrection);
 
             context.SetCustomStatus("Performing corrections");
-            outputs.Add(await context.CallActivityAsync<string>(ActionPerformSqlCorrection, context.GetInput<string>()));
+            outputs.Add(await context.CallSubOrchestratorAsync<string>(SubOrchestratorStartSynapsePipeline, context.GetInput<string>()));
 
             context.SetCustomStatus($"Correction {context.InstanceId} completed");
             return outputs;

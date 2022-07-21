@@ -1,5 +1,8 @@
 using System;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.DurableTask;
 using Microsoft.Extensions.Logging;
@@ -42,6 +45,37 @@ namespace KBB.Corrigeer
         {
             log.LogInformation($"Performing corrections on SQL database {name}.");
             return $"Perform corrections {name}!";
+        }
+
+        [FunctionName(SubOrchestratorStartSynapsePipeline)]
+        public static async Task RunSubOrchestrator(
+            [OrchestrationTrigger] IDurableOrchestrationContext context, ILogger log)
+        {
+            string subscriptionId = "mySubId";
+            string resourceGroup = "myRG";
+            string factoryName = "mySynapse";
+            string apiVersion = "2021-06-01";
+            string pipelineName = "myPipeline";
+
+            log.LogInformation($"Starting Synapse pipeline {pipelineName}.");
+
+            // Automatically fetches an Azure AD token for resource = https://management.core.windows.net/.default
+            // and attaches it to the outgoing Azure Resource Manager API call.
+            var uri = new Uri(
+                $"https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{resourceGroup}/providers/Microsoft.DataFactory/factories/{factoryName}/pipelines/{pipelineName}/createRun?api-version={apiVersion}");
+            var tokenSource = new ManagedIdentityTokenSource(
+                "https://management.core.windows.net/.default");
+            var startRequest = new DurableHttpRequest(
+                HttpMethod.Post,
+                uri,
+                tokenSource: tokenSource);
+
+            DurableHttpResponse startResponse = await context.CallHttpAsync(startRequest);
+
+            if (startResponse.StatusCode != HttpStatusCode.OK)
+            {
+                throw new ArgumentException($"Failed to start Synapse pipeline '{pipelineName}': {startResponse.StatusCode}: {startResponse.Content}");
+            }
         }
     }
 }
